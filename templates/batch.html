@@ -1,0 +1,561 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Processing - ReceiptVision{% endblock %}
+
+{% block content %}
+<section class="batch-section">
+    <div class="batch-container">
+        <div class="batch-header">
+            <h1>Batch Processing</h1>
+            <p>Upload and process multiple receipts and invoices simultaneously</p>
+        </div>
+
+        <div class="batch-content">
+            <!-- Batch Upload Form -->
+            <div class="batch-form-container">
+                <form id="batchForm" class="batch-form" enctype="multipart/form-data">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="jobName">Job Name (Optional)</label>
+                            <input type="text" id="jobName" name="job_name" placeholder="e.g., Monthly Receipts - January 2024">
+                        </div>
+                    </div>
+
+                    <div class="batch-drop-zone" id="batchDropZone">
+                        <div class="drop-zone-content">
+                            <i class="fas fa-cloud-upload-alt drop-icon"></i>
+                            <h3>Drag & Drop Multiple Files Here</h3>
+                            <p>or click to browse files</p>
+                            <input type="file" id="batchFileInput" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif" hidden>
+                            <div class="supported-formats">
+                                <span>Supported formats:</span>
+                                <div class="format-tags">
+                                    <span class="format-tag">PDF</span>
+                                    <span class="format-tag">PNG</span>
+                                    <span class="format-tag">JPG</span>
+                                    <span class="format-tag">TIFF</span>
+                                    <span class="format-tag">BMP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="selected-files" id="selectedFiles" style="display: none;">
+                        <div class="files-header">
+                            <h3>Selected Files</h3>
+                            <button type="button" class="btn btn-secondary btn-small" id="clearFiles">
+                                <i class="fas fa-trash"></i>
+                                Clear All
+                            </button>
+                        </div>
+                        <div class="files-list" id="filesList">
+                            <!-- Files will be populated by JavaScript -->
+                        </div>
+                        <div class="files-summary">
+                            <div class="summary-item">
+                                <span class="summary-label">Total Files:</span>
+                                <span class="summary-value" id="totalFiles">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Total Size:</span>
+                                <span class="summary-value" id="totalSize">0 MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large" id="batchUploadBtn" disabled>
+                        <i class="fas fa-layer-group"></i>
+                        <span>Start Batch Processing</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Batch Processing Status -->
+            <div class="batch-processing" id="batchProcessing" style="display: none;">
+                <div class="processing-card">
+                    <div class="processing-header">
+                        <i class="fas fa-cogs fa-spin processing-icon"></i>
+                        <h3>Processing Batch Job</h3>
+                        <div class="job-info">
+                            <span class="job-name" id="currentJobName">Batch Job</span>
+                            <span class="job-id" id="currentJobId">#12345</span>
+                        </div>
+                    </div>
+
+                    <div class="batch-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="batchProgressFill"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <div class="stat">
+                                <span class="stat-value" id="processedCount">0</span>
+                                <span class="stat-label">Processed</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="failedCount">0</span>
+                                <span class="stat-label">Failed</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value" id="remainingCount">0</span>
+                                <span class="stat-label">Remaining</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="current-file">
+                        <div class="current-file-info">
+                            <i class="fas fa-file-alt"></i>
+                            <span id="currentFileName">Processing...</span>
+                        </div>
+                    </div>
+
+                    <div class="processing-actions">
+                        <button class="btn btn-secondary" id="cancelBatchBtn">
+                            <i class="fas fa-stop"></i>
+                            Cancel Processing
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch Results -->
+            <div class="batch-results" id="batchResults" style="display: none;">
+                <div class="results-card">
+                    <div class="results-header">
+                        <i class="fas fa-check-circle success-icon"></i>
+                        <h3>Batch Processing Complete</h3>
+                        <div class="completion-stats">
+                            <div class="completion-stat success">
+                                <span class="stat-number" id="successCount">0</span>
+                                <span class="stat-label">Successful</span>
+                            </div>
+                            <div class="completion-stat failed">
+                                <span class="stat-number" id="finalFailedCount">0</span>
+                                <span class="stat-label">Failed</span>
+                            </div>
+                            <div class="completion-stat total">
+                                <span class="stat-number" id="finalTotalCount">0</span>
+                                <span class="stat-label">Total</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-summary">
+                        <div class="summary-card">
+                            <h4>Processing Summary</h4>
+                            <div class="summary-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Job Name:</span>
+                                    <span class="detail-value" id="completedJobName">-</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Processing Time:</span>
+                                    <span class="detail-value" id="processingTime">-</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Average Confidence:</span>
+                                    <span class="detail-value" id="avgConfidence">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" id="viewAllReceiptsBtn">
+                            <i class="fas fa-list"></i>
+                            View All Receipts
+                        </button>
+                        <button class="btn btn-primary" id="startNewBatchBtn">
+                            <i class="fas fa-plus"></i>
+                            Start New Batch
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Batch Jobs -->
+            <div class="recent-batches">
+                <div class="recent-header">
+                    <h3>Recent Batch Jobs</h3>
+                    <button class="btn btn-secondary btn-small" id="refreshBatchesBtn">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div class="batches-list" id="batchesList">
+                    <!-- Batch jobs will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class BatchProcessor {
+    constructor() {
+        this.dropZone = document.getElementById('batchDropZone');
+        this.fileInput = document.getElementById('batchFileInput');
+        this.selectedFiles = [];
+        this.currentBatchId = null;
+        this.processingInterval = null;
+
+        this.initializeEventListeners();
+        this.loadRecentBatches();
+    }
+
+    initializeEventListeners() {
+        // Drag and drop events
+        this.dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.dropZone.addEventListener('drop', this.handleDrop.bind(this));
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
+
+        // File input change
+        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+        // Form submission
+        document.getElementById('batchForm').addEventListener('submit', this.handleSubmit.bind(this));
+
+        // Action buttons
+        document.getElementById('clearFiles').addEventListener('click', this.clearFiles.bind(this));
+        document.getElementById('cancelBatchBtn').addEventListener('click', this.cancelBatch.bind(this));
+        document.getElementById('startNewBatchBtn').addEventListener('click', this.resetForm.bind(this));
+        document.getElementById('viewAllReceiptsBtn').addEventListener('click', () => {
+            window.location.href = '/receipts';
+        });
+        document.getElementById('refreshBatchesBtn').addEventListener('click', this.loadRecentBatches.bind(this));
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        this.dropZone.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+
+        const files = Array.from(e.dataTransfer.files);
+        this.addFiles(files);
+    }
+
+    handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        this.addFiles(files);
+    }
+
+    addFiles(files) {
+        const validFiles = files.filter(file => this.isValidFile(file));
+
+        if (validFiles.length === 0) {
+            window.receiptVisionApp.showNotification('No valid files selected', 'warning');
+            return;
+        }
+
+        // Add to selected files
+        validFiles.forEach(file => {
+            if (!this.selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                this.selectedFiles.push(file);
+            }
+        });
+
+        this.updateFilesList();
+        this.updateUploadButton();
+
+        if (validFiles.length < files.length) {
+            const skipped = files.length - validFiles.length;
+            window.receiptVisionApp.showNotification(
+                `${skipped} file(s) skipped (invalid format or too large)`,
+                'warning'
+            );
+        }
+    }
+
+    isValidFile(file) {
+        const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/bmp', 'image/tiff'];
+        const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif'];
+
+        const isValidType = allowedTypes.includes(file.type) ||
+                           allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        const isValidSize = file.size <= 16 * 1024 * 1024; // 16MB limit
+
+        return isValidType && isValidSize;
+    }
+
+    updateFilesList() {
+        const filesList = document.getElementById('filesList');
+        const selectedFilesContainer = document.getElementById('selectedFiles');
+
+        if (this.selectedFiles.length === 0) {
+            selectedFilesContainer.style.display = 'none';
+            return;
+        }
+
+        selectedFilesContainer.style.display = 'block';
+
+        filesList.innerHTML = '';
+
+        this.selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <div class="file-icon">
+                    <i class="fas fa-${this.getFileIcon(file)}"></i>
+                </div>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${window.receiptVisionApp.formatFileSize(file.size)}</div>
+                </div>
+                <button type="button" class="remove-file-btn" data-index="${index}">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+
+            // Add remove functionality
+            const removeBtn = fileItem.querySelector('.remove-file-btn');
+            removeBtn.addEventListener('click', () => this.removeFile(index));
+
+            filesList.appendChild(fileItem);
+        });
+
+        // Update summary
+        const totalSize = this.selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        document.getElementById('totalFiles').textContent = this.selectedFiles.length;
+        document.getElementById('totalSize').textContent = window.receiptVisionApp.formatFileSize(totalSize);
+    }
+
+    getFileIcon(file) {
+        if (file.type === 'application/pdf') return 'file-pdf';
+        if (file.type.startsWith('image/')) return 'file-image';
+        return 'file-alt';
+    }
+
+    removeFile(index) {
+        this.selectedFiles.splice(index, 1);
+        this.updateFilesList();
+        this.updateUploadButton();
+    }
+
+    clearFiles() {
+        this.selectedFiles = [];
+        this.fileInput.value = '';
+        this.updateFilesList();
+        this.updateUploadButton();
+    }
+
+    updateUploadButton() {
+        const uploadBtn = document.getElementById('batchUploadBtn');
+        uploadBtn.disabled = this.selectedFiles.length === 0;
+    }
+
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        if (this.selectedFiles.length === 0) {
+            window.receiptVisionApp.showNotification('Please select files to upload', 'warning');
+            return;
+        }
+
+        this.showProcessing();
+
+        const formData = new FormData();
+        this.selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
+
+        const jobName = document.getElementById('jobName').value.trim();
+        if (jobName) {
+            formData.append('job_name', jobName);
+        }
+
+        try {
+            const response = await fetch('/api/v1/batch-upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                this.currentBatchId = result.batch_job_id;
+                this.startProgressMonitoring();
+
+                // Update UI with job info
+                document.getElementById('currentJobName').textContent = jobName || `Batch Job`;
+                document.getElementById('currentJobId').textContent = `#${result.batch_job_id}`;
+                document.getElementById('remainingCount').textContent = result.total_files;
+
+            } else {
+                this.showError(result.error || 'Batch upload failed');
+            }
+        } catch (error) {
+            this.showError('Network error: ' + error.message);
+        }
+    }
+
+    showProcessing() {
+        this.hideAllSections();
+        document.getElementById('batchProcessing').style.display = 'block';
+    }
+
+    startProgressMonitoring() {
+        this.processingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/v1/batch-job/${this.currentBatchId}`);
+                const jobData = await response.json();
+
+                this.updateProgress(jobData);
+
+                if (jobData.status === 'completed' || jobData.status === 'failed' || jobData.status === 'cancelled') {
+                    clearInterval(this.processingInterval);
+                    this.showResults(jobData);
+                }
+            } catch (error) {
+                console.error('Error monitoring progress:', error);
+            }
+        }, 2000); // Update every 2 seconds
+    }
+
+    updateProgress(jobData) {
+        const progress = (jobData.processed_files / jobData.total_files) * 100;
+        document.getElementById('batchProgressFill').style.width = progress + '%';
+
+        document.getElementById('processedCount').textContent = jobData.processed_files;
+        document.getElementById('failedCount').textContent = jobData.failed_files;
+        document.getElementById('remainingCount').textContent =
+            jobData.total_files - jobData.processed_files - jobData.failed_files;
+    }
+
+    showResults(jobData) {
+        this.hideAllSections();
+        document.getElementById('batchResults').style.display = 'block';
+
+        // Update results display
+        document.getElementById('successCount').textContent = jobData.processed_files;
+        document.getElementById('finalFailedCount').textContent = jobData.failed_files;
+        document.getElementById('finalTotalCount').textContent = jobData.total_files;
+
+        document.getElementById('completedJobName').textContent = jobData.job_name;
+
+        if (jobData.completed_at && jobData.created_at) {
+            const duration = new Date(jobData.completed_at) - new Date(jobData.created_at);
+            document.getElementById('processingTime').textContent =
+                Math.round(duration / 1000) + ' seconds';
+        }
+
+        // Load recent batches to refresh the list
+        this.loadRecentBatches();
+    }
+
+    async cancelBatch() {
+        if (!this.currentBatchId) return;
+
+        try {
+            const response = await fetch(`/api/v1/batch-job/${this.currentBatchId}/cancel`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                clearInterval(this.processingInterval);
+                window.receiptVisionApp.showNotification('Batch job cancelled', 'info');
+                this.resetForm();
+            }
+        } catch (error) {
+            console.error('Error cancelling batch:', error);
+        }
+    }
+
+    async loadRecentBatches() {
+        try {
+            const response = await fetch('/api/v1/batch-jobs?per_page=10');
+            const data = await response.json();
+
+            this.displayRecentBatches(data.batch_jobs || []);
+        } catch (error) {
+            console.error('Error loading recent batches:', error);
+        }
+    }
+
+    displayRecentBatches(batches) {
+        const batchesList = document.getElementById('batchesList');
+
+        if (batches.length === 0) {
+            batchesList.innerHTML = '<div class="no-batches">No batch jobs found</div>';
+            return;
+        }
+
+        batchesList.innerHTML = '';
+
+        batches.forEach(batch => {
+            const batchItem = document.createElement('div');
+            batchItem.className = 'batch-item';
+            batchItem.innerHTML = `
+                <div class="batch-info">
+                    <div class="batch-name">${batch.job_name}</div>
+                    <div class="batch-meta">
+                        <span class="batch-id">#${batch.id}</span>
+                        <span class="batch-date">${window.receiptVisionApp.formatDate(batch.created_at)}</span>
+                    </div>
+                </div>
+                <div class="batch-stats">
+                    <div class="batch-stat">
+                        <span class="stat-value">${batch.total_files}</span>
+                        <span class="stat-label">Files</span>
+                    </div>
+                    <div class="batch-stat">
+                        <span class="stat-value">${batch.processed_files}</span>
+                        <span class="stat-label">Processed</span>
+                    </div>
+                    <div class="batch-stat">
+                        <span class="stat-value">${Math.round(batch.progress_percentage)}%</span>
+                        <span class="stat-label">Complete</span>
+                    </div>
+                </div>
+                <div class="batch-status">
+                    <span class="status-badge status-${batch.status}">${batch.status}</span>
+                </div>
+            `;
+
+            batchesList.appendChild(batchItem);
+        });
+    }
+
+    showError(message) {
+        this.hideAllSections();
+        window.receiptVisionApp.showNotification(message, 'error');
+        this.resetForm();
+    }
+
+    hideAllSections() {
+        document.getElementById('batchProcessing').style.display = 'none';
+        document.getElementById('batchResults').style.display = 'none';
+    }
+
+    resetForm() {
+        this.hideAllSections();
+        this.clearFiles();
+        document.getElementById('jobName').value = '';
+
+        if (this.processingInterval) {
+            clearInterval(this.processingInterval);
+            this.processingInterval = null;
+        }
+
+        this.currentBatchId = null;
+    }
+}
+
+// Initialize batch processor when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new BatchProcessor();
+});
+</script>
+{% endblock %}

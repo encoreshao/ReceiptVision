@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Receipt - ReceiptVision{% endblock %}
+
+{% block content %}
+<section class="upload-section">
+    <div class="upload-container">
+        <div class="upload-header">
+            <h1>Upload Receipt or Invoice</h1>
+            <p>Upload a single file for OCR processing and data extraction</p>
+        </div>
+
+        <div class="upload-content">
+            <!-- Upload Form -->
+            <div class="upload-form-container">
+                <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+                    <div class="file-drop-zone" id="dropZone">
+                        <div class="drop-zone-content">
+                            <i class="fas fa-cloud-upload-alt drop-icon"></i>
+                            <h3>Drag & Drop Your File Here</h3>
+                            <p>or click to browse files</p>
+                            <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif" hidden>
+                            <div class="supported-formats">
+                                <span>Supported formats:</span>
+                                <div class="format-tags">
+                                    <span class="format-tag">PDF</span>
+                                    <span class="format-tag">PNG</span>
+                                    <span class="format-tag">JPG</span>
+                                    <span class="format-tag">TIFF</span>
+                                    <span class="format-tag">BMP</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="file-info" id="fileInfo" style="display: none;">
+                        <div class="file-details">
+                            <i class="fas fa-file-alt"></i>
+                            <div class="file-text">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                            <button type="button" class="remove-file" id="removeFile">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large" id="uploadBtn" disabled>
+                        <i class="fas fa-upload"></i>
+                        <span>Process File</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Processing Status -->
+            <div class="processing-status" id="processingStatus" style="display: none;">
+                <div class="status-card">
+                    <div class="status-header">
+                        <i class="fas fa-cog fa-spin status-icon"></i>
+                        <h3>Processing Your File</h3>
+                    </div>
+                    <div class="status-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Initializing...</div>
+                    </div>
+                    <div class="processing-steps">
+                        <div class="step" id="step1">
+                            <i class="fas fa-upload"></i>
+                            <span>Uploading file</span>
+                        </div>
+                        <div class="step" id="step2">
+                            <i class="fas fa-image"></i>
+                            <span>Image preprocessing</span>
+                        </div>
+                        <div class="step" id="step3">
+                            <i class="fas fa-eye"></i>
+                            <span>OCR text extraction</span>
+                        </div>
+                        <div class="step" id="step4">
+                            <i class="fas fa-brain"></i>
+                            <span>Data parsing</span>
+                        </div>
+                        <div class="step" id="step5">
+                            <i class="fas fa-database"></i>
+                            <span>Saving results</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-card">
+                    <div class="results-header">
+                        <i class="fas fa-check-circle success-icon"></i>
+                        <h3>Processing Complete</h3>
+                        <div class="confidence-score" id="confidenceScore">
+                            <span class="confidence-label">Confidence:</span>
+                            <span class="confidence-value" id="confidenceValue">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="extracted-data" id="extractedData">
+                        <!-- Data will be populated by JavaScript -->
+                    </div>
+
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" id="viewDetailsBtn">
+                            <i class="fas fa-eye"></i>
+                            View Full Details
+                        </button>
+                        <button class="btn btn-primary" id="processAnotherBtn">
+                            <i class="fas fa-plus"></i>
+                            Process Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Display -->
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-card">
+                    <div class="error-header">
+                        <i class="fas fa-exclamation-triangle error-icon"></i>
+                        <h3>Processing Failed</h3>
+                    </div>
+                    <div class="error-message" id="errorMessage">
+                        An error occurred while processing your file.
+                    </div>
+                    <div class="error-actions">
+                        <button class="btn btn-secondary" id="tryAgainBtn">
+                            <i class="fas fa-redo"></i>
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class FileUploader {
+    constructor() {
+        this.dropZone = document.getElementById('dropZone');
+        this.fileInput = document.getElementById('fileInput');
+        this.fileInfo = document.getElementById('fileInfo');
+        this.uploadBtn = document.getElementById('uploadBtn');
+        this.uploadForm = document.getElementById('uploadForm');
+
+        this.processingStatus = document.getElementById('processingStatus');
+        this.resultsSection = document.getElementById('resultsSection');
+        this.errorSection = document.getElementById('errorSection');
+
+        this.selectedFile = null;
+
+        this.initializeEventListeners();
+    }
+
+    initializeEventListeners() {
+        // Drag and drop events
+        this.dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.dropZone.addEventListener('drop', this.handleDrop.bind(this));
+        this.dropZone.addEventListener('click', () => this.fileInput.click());
+
+        // File input change
+        this.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+        // Remove file
+        document.getElementById('removeFile').addEventListener('click', this.removeFile.bind(this));
+
+        // Form submission
+        this.uploadForm.addEventListener('submit', this.handleSubmit.bind(this));
+
+        // Action buttons
+        document.getElementById('processAnotherBtn').addEventListener('click', this.resetForm.bind(this));
+        document.getElementById('tryAgainBtn').addEventListener('click', this.resetForm.bind(this));
+        document.getElementById('viewDetailsBtn').addEventListener('click', this.viewDetails.bind(this));
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        this.dropZone.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.selectFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.selectFile(files[0]);
+        }
+    }
+
+    selectFile(file) {
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/bmp', 'image/tiff'];
+        const allowedExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif'];
+
+        const isValidType = allowedTypes.includes(file.type) ||
+                           allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isValidType) {
+            this.showError('Please select a valid file type (PDF, PNG, JPG, JPEG, BMP, TIFF)');
+            return;
+        }
+
+        // Check file size (16MB limit)
+        if (file.size > 16 * 1024 * 1024) {
+            this.showError('File size must be less than 16MB');
+            return;
+        }
+
+        this.selectedFile = file;
+        this.displayFileInfo(file);
+        this.uploadBtn.disabled = false;
+    }
+
+    displayFileInfo(file) {
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
+
+        this.dropZone.style.display = 'none';
+        this.fileInfo.style.display = 'block';
+    }
+
+    removeFile() {
+        this.selectedFile = null;
+        this.fileInput.value = '';
+        this.uploadBtn.disabled = true;
+
+        this.dropZone.style.display = 'block';
+        this.fileInfo.style.display = 'none';
+    }
+
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        if (!this.selectedFile) {
+            this.showError('Please select a file to upload');
+            return;
+        }
+
+        this.showProcessing();
+
+        const formData = new FormData();
+        formData.append('file', this.selectedFile);
+
+        try {
+            const response = await fetch('/api/v1/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                this.showResults(result);
+            } else {
+                this.showError(result.error || 'Upload failed');
+            }
+        } catch (error) {
+            this.showError('Network error: ' + error.message);
+        }
+    }
+
+    showProcessing() {
+        this.hideAllSections();
+        this.processingStatus.style.display = 'block';
+
+        // Simulate processing steps
+        const steps = ['step1', 'step2', 'step3', 'step4', 'step5'];
+        let currentStep = 0;
+
+        const progressInterval = setInterval(() => {
+            if (currentStep < steps.length) {
+                document.getElementById(steps[currentStep]).classList.add('active');
+                currentStep++;
+
+                const progress = (currentStep / steps.length) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+                document.getElementById('progressText').textContent =
+                    `Step ${currentStep} of ${steps.length}`;
+            } else {
+                clearInterval(progressInterval);
+            }
+        }, 800);
+    }
+
+    showResults(result) {
+        this.hideAllSections();
+        this.resultsSection.style.display = 'block';
+
+        // Display confidence score
+        const confidence = Math.round((result.confidence_score || 0) * 100);
+        document.getElementById('confidenceValue').textContent = confidence + '%';
+
+        // Color code confidence
+        const confidenceElement = document.getElementById('confidenceScore');
+        if (confidence >= 80) {
+            confidenceElement.className = 'confidence-score high';
+        } else if (confidence >= 60) {
+            confidenceElement.className = 'confidence-score medium';
+        } else {
+            confidenceElement.className = 'confidence-score low';
+        }
+
+        // Display extracted data
+        this.displayExtractedData(result.data);
+
+        // Store receipt ID for viewing details
+        this.currentReceiptId = result.receipt_id;
+    }
+
+    displayExtractedData(data) {
+        const container = document.getElementById('extractedData');
+        container.innerHTML = '';
+
+        const fields = [
+            { label: 'Merchant Name', value: data.merchant_name, icon: 'fas fa-store' },
+            { label: 'Total Amount', value: data.total_amount ? `$${data.total_amount.toFixed(2)}` : null, icon: 'fas fa-dollar-sign' },
+            { label: 'Transaction Date', value: data.transaction_date ? new Date(data.transaction_date).toLocaleDateString() : null, icon: 'fas fa-calendar' },
+            { label: 'Phone Number', value: data.merchant_phone, icon: 'fas fa-phone' },
+            { label: 'Items Count', value: data.items ? data.items.length : 0, icon: 'fas fa-list' }
+        ];
+
+        fields.forEach(field => {
+            if (field.value !== null && field.value !== undefined && field.value !== '') {
+                const fieldElement = document.createElement('div');
+                fieldElement.className = 'data-field';
+                fieldElement.innerHTML = `
+                    <div class="field-icon">
+                        <i class="${field.icon}"></i>
+                    </div>
+                    <div class="field-content">
+                        <div class="field-label">${field.label}</div>
+                        <div class="field-value">${field.value}</div>
+                    </div>
+                `;
+                container.appendChild(fieldElement);
+            }
+        });
+    }
+
+    showError(message) {
+        this.hideAllSections();
+        this.errorSection.style.display = 'block';
+        document.getElementById('errorMessage').textContent = message;
+    }
+
+    hideAllSections() {
+        this.processingStatus.style.display = 'none';
+        this.resultsSection.style.display = 'none';
+        this.errorSection.style.display = 'none';
+    }
+
+    resetForm() {
+        this.hideAllSections();
+        this.removeFile();
+
+        // Reset processing steps
+        document.querySelectorAll('.step').forEach(step => {
+            step.classList.remove('active');
+        });
+        document.getElementById('progressFill').style.width = '0%';
+    }
+
+    viewDetails() {
+        if (this.currentReceiptId) {
+            window.location.href = `/receipt/${this.currentReceiptId}`;
+        }
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+}
+
+// Initialize uploader when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new FileUploader();
+});
+</script>
+{% endblock %}

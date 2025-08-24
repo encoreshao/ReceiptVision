@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Receipts - ReceiptVision{% endblock %}
+
+{% block content %}
+<section class="receipts-section">
+    <div class="receipts-container">
+        <div class="receipts-header">
+            <h1>Receipt Management</h1>
+            <p>View, search, and manage all your processed receipts</p>
+        </div>
+
+        <div class="receipts-content">
+            <!-- Search and Filters -->
+            <div class="receipts-controls">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search receipts by merchant, amount, or date...">
+                </div>
+
+                <div class="filters">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                    </select>
+
+                    <select id="typeFilter" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="pdf">PDF</option>
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
+                        <option value="jpeg">JPEG</option>
+                    </select>
+
+                    <button class="btn btn-secondary" id="clearFilters">
+                        <i class="fas fa-times"></i>
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Receipts List -->
+            <div class="receipts-list" id="receiptsList">
+                <!-- Receipts will be populated by JavaScript -->
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="pagination">
+                <!-- Pagination will be populated by JavaScript -->
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-state" id="loadingState">
+                <div class="loading-spinner"></div>
+                <p>Loading receipts...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <h3>No receipts found</h3>
+                <p>Upload your first receipt to get started</p>
+                <a href="{{ url_for('web.upload_page') }}" class="btn btn-primary">
+                    <i class="fas fa-upload"></i>
+                    Upload Receipt
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class ReceiptsManager {
+    constructor() {
+        this.currentPage = 1;
+        this.perPage = 10;
+        this.filters = {
+            search: '',
+            status: '',
+            type: ''
+        };
+
+        this.initializeEventListeners();
+        this.loadReceipts();
+    }
+
+    initializeEventListeners() {
+        // Search input
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', window.receiptVisionApp.debounce(() => {
+            this.filters.search = searchInput.value;
+            this.currentPage = 1;
+            this.loadReceipts();
+        }, 500));
+
+        // Filter selects
+        document.getElementById('statusFilter').addEventListener('change', (e) => {
+            this.filters.status = e.target.value;
+            this.currentPage = 1;
+            this.loadReceipts();
+        });
+
+        document.getElementById('typeFilter').addEventListener('change', (e) => {
+            this.filters.type = e.target.value;
+            this.currentPage = 1;
+            this.loadReceipts();
+        });
+
+        // Clear filters
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            this.clearFilters();
+        });
+    }
+
+    async loadReceipts() {
+        this.showLoading();
+
+        try {
+            const params = new URLSearchParams({
+                page: this.currentPage,
+                per_page: this.perPage,
+                ...this.filters
+            });
+
+            const response = await fetch(`/api/v1/receipts?${params}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                this.displayReceipts(data.receipts);
+                this.displayPagination(data);
+            } else {
+                this.showError('Failed to load receipts');
+            }
+        } catch (error) {
+            console.error('Error loading receipts:', error);
+            this.showError('Network error while loading receipts');
+        }
+    }
+
+    displayReceipts(receipts) {
+        const container = document.getElementById('receiptsList');
+        const loadingState = document.getElementById('loadingState');
+        const emptyState = document.getElementById('emptyState');
+
+        loadingState.style.display = 'none';
+
+        if (receipts.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        container.style.display = 'block';
+        container.innerHTML = '';
+
+        receipts.forEach(receipt => {
+            const receiptCard = this.createReceiptCard(receipt);
+            container.appendChild(receiptCard);
+        });
+    }
+
+    createReceiptCard(receipt) {
+        const card = document.createElement('div');
+        card.className = 'receipt-card';
+
+        const statusClass = this.getStatusClass(receipt.processing_status);
+        const confidenceClass = this.getConfidenceClass(receipt.confidence_score);
+
+        card.innerHTML = `
+            <div class="receipt-header">
+                <div class="receipt-info">
+                    <div class="receipt-filename">${receipt.original_filename}</div>
+                    <div class="receipt-meta">
+                        <span class="receipt-date">${window.receiptVisionApp.formatDate(receipt.upload_timestamp)}</span>
+                        <span class="receipt-size">${window.receiptVisionApp.formatFileSize(receipt.file_size)}</span>
+                        <span class="receipt-type">${receipt.file_type.toUpperCase()}</span>
+                    </div>
+                </div>
+                <div class="receipt-status">
+                    <span class="status-badge ${statusClass}">${receipt.processing_status}</span>
+                </div>
+            </div>
+
+            <div class="receipt-body">
+                ${receipt.extracted_data && receipt.extracted_data.length > 0 ?
+                    this.createExtractedDataPreview(receipt.extracted_data[0]) :
+                    '<div class="no-data">No extracted data available</div>'
+                }
+            </div>
+
+            <div class="receipt-footer">
+                <div class="receipt-confidence">
+                    <span class="confidence-label">Confidence:</span>
+                    <span class="confidence-value ${confidenceClass}">
+                        ${Math.round((receipt.confidence_score || 0) * 100)}%
+                    </span>
+                </div>
+                <div class="receipt-actions">
+                    <button class="btn btn-secondary btn-small" onclick="window.open('/receipt/${receipt.id}', '_blank')">
+                        <i class="fas fa-eye"></i>
+                        View Details
+                    </button>
+                </div>
+            </div>
+        `;
+
+        return card;
+    }
+
+    createExtractedDataPreview(data) {
+        return `
+            <div class="extracted-preview">
+                ${data.merchant_name ? `
+                    <div class="preview-item">
+                        <i class="fas fa-store"></i>
+                        <span>${data.merchant_name}</span>
+                    </div>
+                ` : ''}
+
+                ${data.total_amount ? `
+                    <div class="preview-item">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span>${window.receiptVisionApp.formatCurrency(data.total_amount, data.currency)}</span>
+                    </div>
+                ` : ''}
+
+                ${data.transaction_date ? `
+                    <div class="preview-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>${new Date(data.transaction_date).toLocaleDateString()}</span>
+                    </div>
+                ` : ''}
+
+                ${data.items && data.items.length > 0 ? `
+                    <div class="preview-item">
+                        <i class="fas fa-list"></i>
+                        <span>${data.items.length} items</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    displayPagination(data) {
+        const container = document.getElementById('pagination');
+
+        if (data.pages <= 1) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'flex';
+        container.innerHTML = '';
+
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = `pagination-btn ${data.current_page === 1 ? 'disabled' : ''}`;
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = data.current_page === 1;
+        prevBtn.addEventListener('click', () => {
+            if (data.current_page > 1) {
+                this.currentPage = data.current_page - 1;
+                this.loadReceipts();
+            }
+        });
+        container.appendChild(prevBtn);
+
+        // Page numbers
+        const startPage = Math.max(1, data.current_page - 2);
+        const endPage = Math.min(data.pages, data.current_page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `pagination-btn ${i === data.current_page ? 'active' : ''}`;
+            pageBtn.textContent = i;
+            pageBtn.addEventListener('click', () => {
+                this.currentPage = i;
+                this.loadReceipts();
+            });
+            container.appendChild(pageBtn);
+        }
+
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = `pagination-btn ${data.current_page === data.pages ? 'disabled' : ''}`;
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = data.current_page === data.pages;
+        nextBtn.addEventListener('click', () => {
+            if (data.current_page < data.pages) {
+                this.currentPage = data.current_page + 1;
+                this.loadReceipts();
+            }
+        });
+        container.appendChild(nextBtn);
+    }
+
+    getStatusClass(status) {
+        const statusClasses = {
+            'completed': 'status-success',
+            'pending': 'status-warning',
+            'processing': 'status-info',
+            'failed': 'status-error'
+        };
+        return statusClasses[status] || 'status-default';
+    }
+
+    getConfidenceClass(confidence) {
+        if (confidence >= 0.8) return 'confidence-high';
+        if (confidence >= 0.6) return 'confidence-medium';
+        return 'confidence-low';
+    }
+
+    showLoading() {
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('receiptsList').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'none';
+    }
+
+    showError(message) {
+        document.getElementById('loadingState').style.display = 'none';
+        window.receiptVisionApp.showNotification(message, 'error');
+    }
+
+    clearFilters() {
+        this.filters = { search: '', status: '', type: '' };
+        this.currentPage = 1;
+
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('typeFilter').value = '';
+
+        this.loadReceipts();
+    }
+}
+
+// Initialize receipts manager when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new ReceiptsManager();
+});
+</script>
+{% endblock %}

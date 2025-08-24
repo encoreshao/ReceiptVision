@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}ReceiptVision - Advanced OCR for Receipts & Invoices{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-container">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                Transform receipts into
+                <span class="gradient-text">structured data</span>
+            </h1>
+            <p class="hero-subtitle">
+                Advanced OCR technology that extracts key information from bank invoices
+                and consumer receipts with industry-leading accuracy and confidence scoring.
+            </p>
+
+            <div class="hero-actions">
+                <a href="{{ url_for('web.upload_page') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-upload"></i>
+                    Start Processing
+                </a>
+                <a href="{{ url_for('web.batch_page') }}" class="btn btn-secondary btn-large">
+                    <i class="fas fa-layer-group"></i>
+                    Batch Upload
+                </a>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="total-receipts">0</div>
+                    <div class="stat-label">Receipts Processed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="avg-confidence">0%</div>
+                    <div class="stat-label">Average Confidence</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="avg-time">0s</div>
+                    <div class="stat-label">Average Processing Time</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="receipt-demo">
+                <div class="receipt-card">
+                    <div class="receipt-header">
+                        <div class="receipt-logo"></div>
+                        <div class="receipt-merchant">Apple Store</div>
+                    </div>
+                    <div class="receipt-items">
+                        <div class="receipt-item">
+                            <span>MacBook Pro 14"</span>
+                            <span>$1,999.00</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span>AppleCare+</span>
+                            <span>$399.00</span>
+                        </div>
+                        <div class="receipt-divider"></div>
+                        <div class="receipt-item total">
+                            <span>Total</span>
+                            <span>$2,398.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="processing-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+
+                <div class="data-output">
+                    <div class="data-field">
+                        <label>Merchant:</label>
+                        <span>Apple Store</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Total:</label>
+                        <span>$2,398.00</span>
+                    </div>
+                    <div class="data-field">
+                        <label>Items:</label>
+                        <span>2 items</span>
+                    </div>
+                    <div class="confidence-badge">
+                        <i class="fas fa-check-circle"></i>
+                        98% Confidence
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features">
+    <div class="features-container">
+        <div class="section-header">
+            <h2>Powerful OCR Features</h2>
+            <p>Everything you need to extract and process receipt data with confidence</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-file-image"></i>
+                </div>
+                <h3>Multi-Format Support</h3>
+                <p>Process PDF, JPG, PNG, BMP, and TIFF files with advanced image preprocessing</p>
+                <ul class="feature-list">
+                    <li>PDF document processing</li>
+                    <li>High-resolution image support</li>
+                    <li>Automatic format detection</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>Smart Data Extraction</h3>
+                <p>AI-powered recognition of merchant names, dates, amounts, and itemized purchases</p>
+                <ul class="feature-list">
+                    <li>Merchant information</li>
+                    <li>Transaction details</li>
+                    <li>Individual line items</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3>Advanced Processing</h3>
+                <p>Denoising, adaptive thresholding, and morphological operations for optimal results</p>
+                <ul class="feature-list">
+                    <li>Image denoising</li>
+                    <li>Skew correction</li>
+                    <li>Text enhancement</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <h3>Batch Processing</h3>
+                <p>Upload and process multiple files simultaneously with progress tracking</p>
+                <ul class="feature-list">
+                    <li>Multiple file upload</li>
+                    <li>Progress monitoring</li>
+                    <li>Bulk data export</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Confidence Scoring</h3>
+                <p>Detailed confidence metrics for each extracted field and overall processing quality</p>
+                <ul class="feature-list">
+                    <li>Field-level confidence</li>
+                    <li>Overall quality score</li>
+                    <li>Processing insights</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h3>Data Storage</h3>
+                <p>Secure PostgreSQL storage with full search and retrieval capabilities</p>
+                <ul class="feature-list">
+                    <li>Persistent storage</li>
+                    <li>Search functionality</li>
+                    <li>Data export options</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="how-it-works">
+    <div class="how-it-works-container">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Simple, powerful, and accurate receipt processing in three steps</p>
+        </div>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Upload Your Files</h3>
+                    <p>Drag and drop receipts, invoices, or upload multiple files for batch processing</p>
+                    <div class="step-visual upload-visual">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>AI Processing</h3>
+                    <p>Advanced OCR engine with image preprocessing extracts structured data</p>
+                    <div class="step-visual processing-visual">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Get Results</h3>
+                    <p>Review extracted data with confidence scores and export to your preferred format</p>
+                    <div class="step-visual results-visual">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta">
+    <div class="cta-container">
+        <div class="cta-content">
+            <h2>Ready to get started?</h2>
+            <p>Transform your receipts and invoices into structured data today</p>
+            <div class="cta-actions">
+                <a href="{{ url_for('web.upload_page') }}" class="btn btn-primary btn-large">
+                    <i class="fas fa-rocket"></i>
+                    Start Processing Now
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load and display statistics
+async function loadStatistics() {
+    try {
+        const response = await fetch('/api/v1/statistics');
+        const stats = await response.json();
+
+        document.getElementById('total-receipts').textContent = stats.total_receipts || 0;
+        document.getElementById('avg-confidence').textContent =
+            Math.round((stats.average_confidence || 0) * 100) + '%';
+        document.getElementById('avg-time').textContent =
+            (stats.average_processing_time || 0).toFixed(1) + 's';
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+// Load statistics on page load
+document.addEventListener('DOMContentLoaded', loadStatistics);
+
+// Animate numbers on scroll
+const observerOptions = {
+    threshold: 0.5,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('animate');
+        }
+    });
+}, observerOptions);
+
+document.querySelectorAll('.stat-item, .feature-card, .step-card').forEach(el => {
+    observer.observe(el);
+});
+</script>
+{% endblock %}

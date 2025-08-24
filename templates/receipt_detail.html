@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt Details - ReceiptVision{% endblock %}
+
+{% block content %}
+<section class="receipt-detail-section">
+    <div class="receipt-detail-container">
+        <div class="receipt-detail-header">
+            <div class="breadcrumb">
+                <a href="{{ url_for('web.receipts_page') }}" class="breadcrumb-link">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Receipts
+                </a>
+            </div>
+            <h1>Receipt Details</h1>
+            <p>Detailed view and extracted data for receipt #{{ receipt_id }}</p>
+        </div>
+
+        <div class="receipt-detail-content">
+            <!-- Loading State -->
+            <div class="loading-state" id="loadingState">
+                <div class="loading-spinner"></div>
+                <p>Loading receipt details...</p>
+            </div>
+
+            <!-- Error State -->
+            <div class="error-state" id="errorState" style="display: none;">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3>Receipt Not Found</h3>
+                <p>The requested receipt could not be found or may have been deleted.</p>
+                <a href="{{ url_for('web.receipts_page') }}" class="btn btn-primary">
+                    <i class="fas fa-list"></i>
+                    View All Receipts
+                </a>
+            </div>
+
+            <!-- Receipt Content -->
+            <div class="receipt-content" id="receiptContent" style="display: none;">
+                <!-- File Preview Card -->
+                <div class="preview-card">
+                    <div class="card-header">
+                        <h2>File Preview</h2>
+                        <div class="preview-actions">
+                            <button class="btn btn-secondary btn-small" id="zoomInBtn">
+                                <i class="fas fa-search-plus"></i>
+                                Zoom In
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="zoomOutBtn">
+                                <i class="fas fa-search-minus"></i>
+                                Zoom Out
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="resetZoomBtn">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                                Reset
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="downloadFileBtn">
+                                <i class="fas fa-download"></i>
+                                Download Original
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="preview-container" id="previewContainer">
+                            <div class="preview-loading" id="previewLoading">
+                                <div class="loading-spinner"></div>
+                                <p>Loading preview...</p>
+                            </div>
+                            <div class="preview-error" id="previewError" style="display: none;">
+                                <div class="error-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <p>Unable to load file preview</p>
+                            </div>
+                            <div class="preview-content" id="previewContent" style="display: none;">
+                                <!-- Preview content will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Receipt Info Card -->
+                <div class="info-card">
+                    <div class="card-header">
+                        <h2>Receipt Information</h2>
+                        <div class="receipt-actions">
+                            <button class="btn btn-secondary btn-small" id="downloadBtn">
+                                <i class="fas fa-download"></i>
+                                Download Data
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="reprocessBtn">
+                                <i class="fas fa-redo"></i>
+                                Reprocess
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Filename:</label>
+                                <span id="filename">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>File Type:</label>
+                                <span id="fileType">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>File Size:</label>
+                                <span id="fileSize">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Upload Date:</label>
+                                <span id="uploadDate">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Status:</label>
+                                <span id="status" class="status-badge">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Confidence Score:</label>
+                                <span id="confidenceScore" class="confidence-value">-</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Processing Time:</label>
+                                <span id="processingTime">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extracted Data Card -->
+                <div class="data-card">
+                    <div class="card-header">
+                        <h2>Extracted Data</h2>
+                        <div class="data-actions">
+                            <button class="btn btn-secondary btn-small" id="exportJsonBtn">
+                                <i class="fas fa-file-code"></i>
+                                Export JSON
+                            </button>
+                            <button class="btn btn-secondary btn-small" id="exportCsvBtn">
+                                <i class="fas fa-file-csv"></i>
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="extracted-data" id="extractedData">
+                            <!-- Data will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw Text Card -->
+                <div class="raw-text-card">
+                    <div class="card-header">
+                        <h2>Raw OCR Text</h2>
+                        <button class="btn btn-secondary btn-small" id="copyTextBtn">
+                            <i class="fas fa-copy"></i>
+                            Copy Text
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="raw-text" id="rawText">
+                            <!-- Raw text will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confidence Scores Card -->
+                <div class="confidence-card">
+                    <div class="card-header">
+                        <h2>Field Confidence Scores</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="confidence-scores" id="confidenceScores">
+                            <!-- Confidence scores will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class ReceiptDetailManager {
+    constructor(receiptId) {
+        this.receiptId = receiptId;
+        this.receipt = null;
+        this.extractedData = null;
+        this.currentZoom = 1;
+        this.previewElement = null;
+
+        this.initializeEventListeners();
+        this.loadReceiptDetails();
+    }
+
+    initializeEventListeners() {
+        // Preview controls
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            this.zoomPreview(1.2);
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            this.zoomPreview(0.8);
+        });
+
+        document.getElementById('resetZoomBtn').addEventListener('click', () => {
+            this.resetZoom();
+        });
+
+        document.getElementById('downloadFileBtn').addEventListener('click', () => {
+            this.downloadOriginalFile();
+        });
+
+        // Download button
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            this.downloadReceiptData();
+        });
+
+        // Reprocess button
+        document.getElementById('reprocessBtn').addEventListener('click', () => {
+            this.reprocessReceipt();
+        });
+
+        // Export buttons
+        document.getElementById('exportJsonBtn').addEventListener('click', () => {
+            this.exportData('json');
+        });
+
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            this.exportData('csv');
+        });
+
+        // Copy text button
+        document.getElementById('copyTextBtn').addEventListener('click', () => {
+            this.copyRawText();
+        });
+    }
+
+    async loadReceiptDetails() {
+        try {
+            const response = await fetch(`/api/v1/receipts/${this.receiptId}`);
+
+            if (response.status === 404) {
+                this.showError();
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to load receipt details');
+            }
+
+            const data = await response.json();
+            this.receipt = data.receipt;
+            this.extractedData = data.extracted_data;
+
+            this.displayReceiptDetails();
+
+        } catch (error) {
+            console.error('Error loading receipt details:', error);
+            this.showError();
+        }
+    }
+
+    displayReceiptDetails() {
+        // Hide loading state
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('receiptContent').style.display = 'block';
+
+        // Populate receipt information
+        document.getElementById('filename').textContent = this.receipt.original_filename;
+        document.getElementById('fileType').textContent = this.receipt.file_type.toUpperCase();
+        document.getElementById('fileSize').textContent = window.receiptVisionApp.formatFileSize(this.receipt.file_size);
+        document.getElementById('uploadDate').textContent = window.receiptVisionApp.formatDate(this.receipt.upload_timestamp);
+
+        // Status badge
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = this.receipt.processing_status;
+        statusElement.className = `status-badge ${this.getStatusClass(this.receipt.processing_status)}`;
+
+        // Confidence score
+        const confidenceElement = document.getElementById('confidenceScore');
+        const confidence = Math.round((this.receipt.confidence_score || 0) * 100);
+        confidenceElement.textContent = confidence + '%';
+        confidenceElement.className = `confidence-value ${this.getConfidenceClass(this.receipt.confidence_score)}`;
+
+        // Processing time
+        document.getElementById('processingTime').textContent =
+            (this.receipt.processing_time || 0).toFixed(2) + 's';
+
+                // Load file preview
+        this.loadFilePreview();
+
+        // Display extracted data
+        this.displayExtractedData();
+
+        // Display raw text
+        this.displayRawText();
+
+        // Display confidence scores
+        this.displayConfidenceScores();
+    }
+
+    displayExtractedData() {
+        const container = document.getElementById('extractedData');
+
+        if (!this.extractedData) {
+            container.innerHTML = '<div class="no-data">No extracted data available</div>';
+            return;
+        }
+
+        const data = this.extractedData;
+        let html = '<div class="data-grid">';
+
+        // Merchant information
+        if (data.merchant_name) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-store"></i>
+                        Merchant Name
+                    </div>
+                    <div class="data-value">${data.merchant_name}</div>
+                </div>
+            `;
+        }
+
+        // Transaction date
+        if (data.transaction_date) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-calendar"></i>
+                        Transaction Date
+                    </div>
+                    <div class="data-value">${new Date(data.transaction_date).toLocaleDateString()}</div>
+                </div>
+            `;
+        }
+
+        // Total amount
+        if (data.total_amount) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-dollar-sign"></i>
+                        Total Amount
+                    </div>
+                    <div class="data-value">${window.receiptVisionApp.formatCurrency(data.total_amount, data.currency)}</div>
+                </div>
+            `;
+        }
+
+        // Subtotal
+        if (data.subtotal) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-calculator"></i>
+                        Subtotal
+                    </div>
+                    <div class="data-value">${window.receiptVisionApp.formatCurrency(data.subtotal, data.currency)}</div>
+                </div>
+            `;
+        }
+
+        // Tax amount
+        if (data.tax_amount) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-percent"></i>
+                        Tax Amount
+                    </div>
+                    <div class="data-value">${window.receiptVisionApp.formatCurrency(data.tax_amount, data.currency)}</div>
+                </div>
+            `;
+        }
+
+        // Phone number
+        if (data.phone_number) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-phone"></i>
+                        Phone Number
+                    </div>
+                    <div class="data-value">${data.phone_number}</div>
+                </div>
+            `;
+        }
+
+        // Address
+        if (data.address) {
+            html += `
+                <div class="data-item">
+                    <div class="data-label">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Address
+                    </div>
+                    <div class="data-value">${data.address}</div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+
+        // Items list
+        if (data.items && data.items.length > 0) {
+            html += '<div class="items-section">';
+            html += '<h3>Items</h3>';
+            html += '<div class="items-list">';
+
+            data.items.forEach(item => {
+                html += `
+                    <div class="item-row">
+                        <div class="item-name">${item.name || 'Unknown Item'}</div>
+                        <div class="item-details">
+                            ${item.quantity ? `<span class="item-quantity">Qty: ${item.quantity}</span>` : ''}
+                            ${item.price ? `<span class="item-price">${window.receiptVisionApp.formatCurrency(item.price, data.currency)}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    displayRawText() {
+        const container = document.getElementById('rawText');
+
+        if (!this.extractedData || !this.extractedData.raw_text) {
+            container.innerHTML = '<div class="no-data">No raw text available</div>';
+            return;
+        }
+
+        container.innerHTML = `<pre>${this.extractedData.raw_text}</pre>`;
+    }
+
+    displayConfidenceScores() {
+        const container = document.getElementById('confidenceScores');
+
+        if (!this.extractedData || !this.extractedData.confidence_scores) {
+            container.innerHTML = '<div class="no-data">No confidence scores available</div>';
+            return;
+        }
+
+        const scores = this.extractedData.confidence_scores;
+        let html = '<div class="confidence-grid">';
+
+        Object.entries(scores).forEach(([field, score]) => {
+            const percentage = Math.round(score * 100);
+            const confidenceClass = this.getConfidenceClass(score);
+
+            html += `
+                <div class="confidence-item">
+                    <div class="confidence-field">${field.replace('_', ' ').toUpperCase()}</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill ${confidenceClass}" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="confidence-percentage">${percentage}%</div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    getStatusClass(status) {
+        const statusClasses = {
+            'completed': 'status-success',
+            'pending': 'status-warning',
+            'processing': 'status-info',
+            'failed': 'status-error'
+        };
+        return statusClasses[status] || 'status-default';
+    }
+
+    getConfidenceClass(confidence) {
+        if (confidence >= 0.8) return 'confidence-high';
+        if (confidence >= 0.6) return 'confidence-medium';
+        return 'confidence-low';
+    }
+
+    showError() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+    }
+
+    async downloadReceiptData() {
+        try {
+            const response = await fetch(`/api/v1/receipts/${this.receiptId}/download`);
+            const blob = await response.blob();
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receipt_${this.receiptId}_data.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+        } catch (error) {
+            console.error('Error downloading receipt data:', error);
+            window.receiptVisionApp.showNotification('Failed to download receipt data', 'error');
+        }
+    }
+
+    async reprocessReceipt() {
+        if (!confirm('Are you sure you want to reprocess this receipt? This will overwrite the existing extracted data.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/receipts/${this.receiptId}/reprocess`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                window.receiptVisionApp.showNotification('Receipt reprocessing started', 'success');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                throw new Error('Failed to reprocess receipt');
+            }
+
+        } catch (error) {
+            console.error('Error reprocessing receipt:', error);
+            window.receiptVisionApp.showNotification('Failed to reprocess receipt', 'error');
+        }
+    }
+
+    exportData(format) {
+        const data = {
+            receipt: this.receipt,
+            extracted_data: this.extractedData
+        };
+
+        if (format === 'json') {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            this.downloadBlob(blob, `receipt_${this.receiptId}.json`);
+        } else if (format === 'csv') {
+            const csv = this.convertToCSV(data);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            this.downloadBlob(blob, `receipt_${this.receiptId}.csv`);
+        }
+    }
+
+    convertToCSV(data) {
+        const rows = [];
+        rows.push(['Field', 'Value']);
+
+        if (data.extracted_data) {
+            const extracted = data.extracted_data;
+            rows.push(['Merchant Name', extracted.merchant_name || '']);
+            rows.push(['Transaction Date', extracted.transaction_date || '']);
+            rows.push(['Total Amount', extracted.total_amount || '']);
+            rows.push(['Subtotal', extracted.subtotal || '']);
+            rows.push(['Tax Amount', extracted.tax_amount || '']);
+            rows.push(['Phone Number', extracted.phone_number || '']);
+            rows.push(['Address', extracted.address || '']);
+        }
+
+        return rows.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+    }
+
+    downloadBlob(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }
+
+        copyRawText() {
+        const rawText = this.extractedData?.raw_text || '';
+
+        if (!rawText) {
+            window.receiptVisionApp.showNotification('No text to copy', 'warning');
+            return;
+        }
+
+        navigator.clipboard.writeText(rawText).then(() => {
+            window.receiptVisionApp.showNotification('Text copied to clipboard', 'success');
+        }).catch(() => {
+            window.receiptVisionApp.showNotification('Failed to copy text', 'error');
+        });
+    }
+
+    async loadFilePreview() {
+        const previewContainer = document.getElementById('previewContainer');
+        const previewLoading = document.getElementById('previewLoading');
+        const previewError = document.getElementById('previewError');
+        const previewContent = document.getElementById('previewContent');
+
+        try {
+            const fileType = this.receipt.file_type.toLowerCase();
+
+            if (['jpg', 'jpeg', 'png', 'bmp', 'tiff', 'tif'].includes(fileType)) {
+                // Image preview
+                const img = document.createElement('img');
+                img.className = 'preview-image';
+                img.src = `/api/v1/receipts/${this.receiptId}/file`;
+                img.alt = 'Receipt preview';
+
+                img.onload = () => {
+                    previewLoading.style.display = 'none';
+                    previewContent.innerHTML = '';
+                    previewContent.appendChild(img);
+                    previewContent.style.display = 'block';
+                    this.previewElement = img;
+                };
+
+                img.onerror = () => {
+                    this.showPreviewError();
+                };
+
+            } else if (fileType === 'pdf') {
+                // PDF preview
+                const iframe = document.createElement('iframe');
+                iframe.className = 'preview-pdf';
+                iframe.src = `/api/v1/receipts/${this.receiptId}/file`;
+                iframe.title = 'PDF preview';
+
+                iframe.onload = () => {
+                    previewLoading.style.display = 'none';
+                    previewContent.innerHTML = '';
+                    previewContent.appendChild(iframe);
+                    previewContent.style.display = 'block';
+                    this.previewElement = iframe;
+                };
+
+                iframe.onerror = () => {
+                    this.showPreviewError();
+                };
+
+            } else {
+                this.showPreviewError('Unsupported file type for preview');
+            }
+
+        } catch (error) {
+            console.error('Error loading file preview:', error);
+            this.showPreviewError();
+        }
+    }
+
+    showPreviewError(message = 'Unable to load file preview') {
+        document.getElementById('previewLoading').style.display = 'none';
+        document.getElementById('previewError').style.display = 'block';
+        document.getElementById('previewError').querySelector('p').textContent = message;
+    }
+
+    zoomPreview(factor) {
+        if (!this.previewElement || this.receipt.file_type.toLowerCase() === 'pdf') {
+            return; // PDF zoom is handled by the browser
+        }
+
+        this.currentZoom *= factor;
+        this.currentZoom = Math.max(0.1, Math.min(5, this.currentZoom)); // Limit zoom between 10% and 500%
+
+        this.previewElement.style.transform = `scale(${this.currentZoom})`;
+        this.previewElement.style.transformOrigin = 'center';
+    }
+
+    resetZoom() {
+        if (!this.previewElement || this.receipt.file_type.toLowerCase() === 'pdf') {
+            return;
+        }
+
+        this.currentZoom = 1;
+        this.previewElement.style.transform = 'scale(1)';
+    }
+
+    async downloadOriginalFile() {
+        try {
+            const response = await fetch(`/api/v1/receipts/${this.receiptId}/file`);
+            const blob = await response.blob();
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = this.receipt.original_filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            window.receiptVisionApp.showNotification('File downloaded successfully', 'success');
+
+        } catch (error) {
+            console.error('Error downloading file:', error);
+            window.receiptVisionApp.showNotification('Failed to download file', 'error');
+        }
+    }
+}
+
+// Initialize receipt detail manager when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const receiptId = {{ receipt_id }};
+    new ReceiptDetailManager(receiptId);
+});
+</script>
+{% endblock %}

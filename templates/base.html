@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ReceiptVision - OCR for Receipts & Invoices{% endblock %}</title>
+
+    <!-- Apple-style CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="{{ url_for('web.index') }}">
+                    <i class="fas fa-receipt"></i>
+                    <span>ReceiptVision</span>
+                </a>
+            </div>
+
+            <div class="nav-menu">
+                <a href="{{ url_for('web.index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('web.upload_page') }}" class="nav-link">Upload</a>
+                <a href="{{ url_for('web.batch_page') }}" class="nav-link">Batch</a>
+                <a href="{{ url_for('web.receipts_page') }}" class="nav-link">Receipts</a>
+                <a href="{{ url_for('web.statistics_page') }}" class="nav-link">Statistics</a>
+            </div>
+
+            <div class="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>ReceiptVision</h4>
+                    <p>Advanced OCR processing for receipts and invoices</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li>Multi-format Support</li>
+                        <li>Batch Processing</li>
+                        <li>Advanced Image Processing</li>
+                        <li>Confidence Scoring</li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Supported Formats</h4>
+                    <ul>
+                        <li>PDF Documents</li>
+                        <li>PNG, JPG, JPEG</li>
+                        <li>BMP, TIFF</li>
+                        <li>Bank Invoices</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 ReceiptVision. Built with advanced OCR technology.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

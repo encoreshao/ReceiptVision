@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics - ReceiptVision{% endblock %}
+
+{% block content %}
+<section class="statistics-section">
+    <div class="statistics-container">
+        <div class="statistics-header">
+            <h1>Processing Statistics</h1>
+            <p>Insights and analytics for your OCR processing activities</p>
+        </div>
+
+        <div class="statistics-content">
+            <!-- Overview Cards -->
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="totalReceipts">0</div>
+                        <div class="stat-label">Total Receipts</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="completedReceipts">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="pendingReceipts">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="failedReceipts">0</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="performance-metrics">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Average Confidence Score</h3>
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="metric-value">
+                        <div class="confidence-circle" id="confidenceCircle">
+                            <div class="confidence-percentage" id="avgConfidence">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Average Processing Time</h3>
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <div class="metric-value">
+                        <div class="processing-time" id="avgProcessingTime">0.0s</div>
+                        <div class="time-label">per receipt</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Success Rate</h3>
+                        <i class="fas fa-target"></i>
+                    </div>
+                    <div class="metric-value">
+                        <div class="success-rate" id="successRate">0%</div>
+                        <div class="rate-label">completion rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Types Distribution -->
+            <div class="file-types-section">
+                <div class="section-header">
+                    <h3>File Types Distribution</h3>
+                </div>
+                <div class="file-types-grid" id="fileTypesGrid">
+                    <!-- File types will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Batch Jobs Summary -->
+            <div class="batch-jobs-section">
+                <div class="section-header">
+                    <h3>Recent Batch Jobs</h3>
+                    <a href="{{ url_for('web.batch_page') }}" class="btn btn-secondary btn-small">
+                        <i class="fas fa-layer-group"></i>
+                        View All Batches
+                    </a>
+                </div>
+                <div class="batch-jobs-list" id="batchJobsList">
+                    <!-- Batch jobs will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <p>Loading statistics...</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class StatisticsManager {
+    constructor() {
+        this.loadStatistics();
+        this.loadBatchJobs();
+    }
+
+    async loadStatistics() {
+        try {
+            const response = await fetch('/api/v1/statistics');
+            const stats = await response.json();
+
+            if (response.ok) {
+                this.displayStatistics(stats);
+            } else {
+                this.showError('Failed to load statistics');
+            }
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+            this.showError('Network error while loading statistics');
+        }
+    }
+
+    async loadBatchJobs() {
+        try {
+            const response = await fetch('/api/v1/batch-jobs?per_page=5');
+            const data = await response.json();
+
+            if (response.ok) {
+                this.displayBatchJobs(data.batch_jobs || []);
+            }
+        } catch (error) {
+            console.error('Error loading batch jobs:', error);
+        }
+    }
+
+    displayStatistics(stats) {
+        // Update overview cards
+        document.getElementById('totalReceipts').textContent = stats.total_receipts || 0;
+        document.getElementById('completedReceipts').textContent = stats.completed_receipts || 0;
+        document.getElementById('pendingReceipts').textContent = stats.pending_receipts || 0;
+        document.getElementById('failedReceipts').textContent = stats.failed_receipts || 0;
+
+        // Update performance metrics
+        const avgConfidence = Math.round((stats.average_confidence || 0) * 100);
+        document.getElementById('avgConfidence').textContent = avgConfidence + '%';
+
+        // Update confidence circle
+        const confidenceCircle = document.getElementById('confidenceCircle');
+        const confidenceClass = this.getConfidenceClass(avgConfidence / 100);
+        confidenceCircle.className = `confidence-circle ${confidenceClass}`;
+
+        // Update processing time
+        document.getElementById('avgProcessingTime').textContent =
+            (stats.average_processing_time || 0).toFixed(1) + 's';
+
+        // Calculate and display success rate
+        const successRate = stats.total_receipts > 0 ?
+            Math.round((stats.completed_receipts / stats.total_receipts) * 100) : 0;
+        document.getElementById('successRate').textContent = successRate + '%';
+
+        // Display file types
+        this.displayFileTypes(stats.file_types || {});
+
+        // Hide loading overlay
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    displayFileTypes(fileTypes) {
+        const container = document.getElementById('fileTypesGrid');
+        container.innerHTML = '';
+
+        if (Object.keys(fileTypes).length === 0) {
+            container.innerHTML = '<div class="no-data">No file type data available</div>';
+            return;
+        }
+
+        const total = Object.values(fileTypes).reduce((sum, count) => sum + count, 0);
+
+        Object.entries(fileTypes).forEach(([type, count]) => {
+            const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+
+            const typeCard = document.createElement('div');
+            typeCard.className = 'file-type-card';
+            typeCard.innerHTML = `
+                <div class="file-type-icon">
+                    <i class="fas fa-${this.getFileTypeIcon(type)}"></i>
+                </div>
+                <div class="file-type-info">
+                    <div class="file-type-name">${type.toUpperCase()}</div>
+                    <div class="file-type-count">${count} files</div>
+                    <div class="file-type-percentage">${percentage}%</div>
+                </div>
+                <div class="file-type-bar">
+                    <div class="file-type-fill" style="width: ${percentage}%"></div>
+                </div>
+            `;
+
+            container.appendChild(typeCard);
+        });
+    }
+
+    displayBatchJobs(batchJobs) {
+        const container = document.getElementById('batchJobsList');
+
+        if (batchJobs.length === 0) {
+            container.innerHTML = '<div class="no-data">No batch jobs found</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+
+        batchJobs.forEach(job => {
+            const jobCard = document.createElement('div');
+            jobCard.className = 'batch-job-card';
+
+            const statusClass = this.getStatusClass(job.status);
+
+            jobCard.innerHTML = `
+                <div class="job-header">
+                    <div class="job-name">${job.job_name}</div>
+                    <span class="status-badge ${statusClass}">${job.status}</span>
+                </div>
+                <div class="job-stats">
+                    <div class="job-stat">
+                        <span class="stat-value">${job.total_files}</span>
+                        <span class="stat-label">Files</span>
+                    </div>
+                    <div class="job-stat">
+                        <span class="stat-value">${job.processed_files}</span>
+                        <span class="stat-label">Processed</span>
+                    </div>
+                    <div class="job-stat">
+                        <span class="stat-value">${Math.round(job.progress_percentage)}%</span>
+                        <span class="stat-label">Complete</span>
+                    </div>
+                </div>
+                <div class="job-date">
+                    ${window.receiptVisionApp.formatDate(job.created_at)}
+                </div>
+            `;
+
+            container.appendChild(jobCard);
+        });
+    }
+
+    getConfidenceClass(confidence) {
+        if (confidence >= 0.8) return 'high';
+        if (confidence >= 0.6) return 'medium';
+        return 'low';
+    }
+
+    getFileTypeIcon(type) {
+        const icons = {
+            'pdf': 'file-pdf',
+            'png': 'file-image',
+            'jpg': 'file-image',
+            'jpeg': 'file-image',
+            'bmp': 'file-image',
+            'tiff': 'file-image',
+            'tif': 'file-image'
+        };
+        return icons[type.toLowerCase()] || 'file-alt';
+    }
+
+    getStatusClass(status) {
+        const statusClasses = {
+            'completed': 'status-success',
+            'pending': 'status-warning',
+            'processing': 'status-info',
+            'failed': 'status-error',
+            'cancelled': 'status-default'
+        };
+        return statusClasses[status] || 'status-default';
+    }
+
+    showError(message) {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        window.receiptVisionApp.showNotification(message, 'error');
+    }
+}
+
+// Initialize statistics manager when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new StatisticsManager();
+});
+</script>
+{% endblock %}
