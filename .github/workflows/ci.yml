@@ -40,8 +40,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
-        sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+        sudo apt-get install -y libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1
         sudo apt-get install -y poppler-utils
+        sudo apt-get install -y python3-opencv || true
+        sudo apt-get install -y libopencv-dev || true
 
     - name: Cache pip dependencies
       uses: actions/cache@v3
@@ -67,7 +69,15 @@ jobs:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_receiptvision
         FLASK_ENV: testing
         SECRET_KEY: test-secret-key-for-ci
+        DISPLAY: ":99"
+        QT_QPA_PLATFORM: offscreen
+        MPLBACKEND: Agg
       run: |
+        # Start virtual display for headless operation
+        sudo apt-get install -y xvfb || true
+        export DISPLAY=:99
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        sleep 3
         pytest tests/ -v --tb=short
 
     - name: Run linting with flake8

@@ -349,41 +349,27 @@ def get_batch_jobs():
 def get_receipt_details(receipt_id):
     """Get detailed information about a specific receipt"""
     try:
-        # For now, return demo data to avoid database issues
-        receipt_data = {
-            'id': receipt_id,
-            'filename': f'receipt_{receipt_id}.jpg',
-            'original_filename': f'test_receipt_{receipt_id}.jpg',
-            'file_type': 'jpg',
-            'file_size': 1024000,
-            'upload_timestamp': '2024-08-23T22:17:12.000000',
-            'processing_status': 'completed',
-            'confidence_score': 0.85,
-            'processing_time': 2.5,
-            'error_message': None
-        }
+        # Get database instance
+        db = get_db()
 
-        extracted_data_dict = {
-            'merchant_name': 'Sample Store',
-            'transaction_date': '2024-08-23',
-            'total_amount': 25.99,
-            'subtotal': 23.99,
-            'tax_amount': 2.00,
-            'currency': 'USD',
-            'phone_number': '(555) 123-4567',
-            'address': '123 Main St, City, State 12345',
-            'items': [
-                {'name': 'Sample Item 1', 'quantity': 2, 'price': 12.99},
-                {'name': 'Sample Item 2', 'quantity': 1, 'price': 10.99}
-            ],
-            'raw_text': 'Sample Store\n123 Main St\nCity, State 12345\n(555) 123-4567\n\nSample Item 1    2x    $12.99\nSample Item 2    1x    $10.99\n\nSubtotal: $23.99\nTax: $2.00\nTotal: $25.99',
-            'confidence_scores': {
-                'merchant_name': 0.95,
-                'total_amount': 0.88,
-                'transaction_date': 0.75,
-                'items': 0.82
-            }
-        }
+        # Get receipt from database
+        receipt = db.session.query(Receipt).get(receipt_id)
+        if not receipt:
+            return jsonify({'error': 'Receipt not found'}), 404
+
+        # Get extracted data for this receipt
+        extracted_data = db.session.query(ExtractedData).filter_by(receipt_id=receipt_id).first()
+
+        # Convert receipt to dict
+        receipt_data = receipt.to_dict()
+
+        # Convert extracted data to dict if it exists
+        extracted_data_dict = None
+        if extracted_data:
+            extracted_data_dict = extracted_data.to_dict()
+            # Clean up the dict to match frontend expectations
+            extracted_data_dict['address'] = extracted_data_dict.get('merchant_address')
+            extracted_data_dict['phone_number'] = extracted_data_dict.get('merchant_phone')
 
         return jsonify({
             'receipt': receipt_data,
@@ -399,77 +385,43 @@ def get_receipt_details(receipt_id):
 def get_receipt_file(receipt_id):
     """Serve the original receipt file for preview/download"""
     try:
-        # For demo purposes, return a placeholder image
-        # In a real implementation, this would serve the actual uploaded file
         from flask import send_file
-        import io
-        from PIL import Image, ImageDraw, ImageFont
 
-        # Create a demo receipt image
-        img = Image.new('RGB', (600, 800), color='white')
-        draw = ImageDraw.Draw(img)
+        # Get database instance
+        db = get_db()
 
-        # Try to use a default font, fallback to basic if not available
-        try:
-            font_large = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 24)
-            font_medium = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 18)
-            font_small = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 14)
-        except:
-            font_large = ImageFont.load_default()
-            font_medium = ImageFont.load_default()
-            font_small = ImageFont.load_default()
+        # Get receipt from database
+        receipt = db.session.query(Receipt).get(receipt_id)
+        if not receipt:
+            return jsonify({'error': 'Receipt not found'}), 404
 
-        # Draw receipt content
-        y = 50
-        draw.text((50, y), "SAMPLE STORE", fill='black', font=font_large)
-        y += 40
-        draw.text((50, y), "123 Main Street", fill='black', font=font_medium)
-        y += 25
-        draw.text((50, y), "City, State 12345", fill='black', font=font_medium)
-        y += 25
-        draw.text((50, y), "(555) 123-4567", fill='black', font=font_medium)
-        y += 50
+        # Build file path
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], receipt.filename)
 
-        # Draw line
-        draw.line([(50, y), (550, y)], fill='black', width=2)
-        y += 30
+        # Check if file exists
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return jsonify({'error': 'File not found'}), 404
 
-        # Draw items
-        draw.text((50, y), "Sample Item 1", fill='black', font=font_medium)
-        draw.text((450, y), "$12.99", fill='black', font=font_medium)
-        y += 30
-        draw.text((50, y), "Sample Item 2", fill='black', font=font_medium)
-        draw.text((450, y), "$10.99", fill='black', font=font_medium)
-        y += 50
+        # Determine MIME type based on file extension
+        file_extension = receipt.file_type.lower()
+        mime_types = {
+            'pdf': 'application/pdf',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'bmp': 'image/bmp',
+            'tiff': 'image/tiff',
+            'tif': 'image/tiff'
+        }
 
-        # Draw line
-        draw.line([(50, y), (550, y)], fill='black', width=1)
-        y += 20
-
-        # Draw totals
-        draw.text((50, y), "Subtotal:", fill='black', font=font_medium)
-        draw.text((450, y), "$23.99", fill='black', font=font_medium)
-        y += 25
-        draw.text((50, y), "Tax:", fill='black', font=font_medium)
-        draw.text((450, y), "$2.00", fill='black', font=font_medium)
-        y += 25
-        draw.text((50, y), "TOTAL:", fill='black', font=font_large)
-        draw.text((450, y), "$25.99", fill='black', font=font_large)
-
-        # Add receipt ID
-        y += 50
-        draw.text((50, y), f"Receipt ID: {receipt_id}", fill='gray', font=font_small)
-
-        # Save to bytes
-        img_io = io.BytesIO()
-        img.save(img_io, 'JPEG', quality=95)
-        img_io.seek(0)
+        mime_type = mime_types.get(file_extension, 'application/octet-stream')
 
         return send_file(
-            img_io,
-            mimetype='image/jpeg',
+            file_path,
+            mimetype=mime_type,
             as_attachment=False,
-            download_name=f'receipt_{receipt_id}.jpg'
+            download_name=receipt.original_filename
         )
 
     except Exception as e:
