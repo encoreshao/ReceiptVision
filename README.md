@@ -119,7 +119,7 @@ ReceiptVision is a comprehensive Python-based OCR application that transforms re
    ```
 
 9. **Access the Application**
-   Open your browser and navigate to `http://localhost:5000`
+   Open your browser and navigate to `http://localhost:5001`
 
 ## 📖 Usage Guide
 
@@ -153,21 +153,34 @@ ReceiptVision is a comprehensive Python-based OCR application that transforms re
 
 ```
 ReceiptVision/
-├── app.py                 # Flask application factory
-├── models.py              # SQLAlchemy database models
+├── app.py                     # Flask application factory
+├── models.py                  # SQLAlchemy database models
 ├── api/
-│   └── routes.py         # REST API endpoints
+│   ├── routes.py             # Main API blueprint registration
+│   └── blueprints/           # Resource-specific route blueprints
+│       ├── __init__.py       # Blueprint package initialization
+│       ├── upload_routes.py  # File upload endpoints
+│       ├── receipt_routes.py # Receipt management endpoints
+│       ├── batch_routes.py   # Batch processing endpoints
+│       ├── system_routes.py  # Health/statistics endpoints
+│       └── utils.py          # Shared API utilities
 ├── web/
-│   └── routes.py         # Web interface routes
+│   └── routes.py             # Web interface routes
 ├── services/
-│   ├── file_processor.py # File processing service
-│   └── batch_processor.py# Batch processing service
+│   ├── file_processor.py     # File processing service
+│   └── batch_processor.py    # Batch processing service
 ├── ocr/
-│   ├── ocr_engine.py     # Main OCR processing engine
-│   ├── image_processor.py# Advanced image preprocessing
-│   └── pdf_processor.py  # PDF handling and conversion
+│   ├── ocr_engine.py         # Main OCR processing engine
+│   ├── image_processor.py    # Advanced image preprocessing
+│   └── pdf_processor.py      # PDF handling and conversion
+├── tests/
+│   ├── conftest.py           # Pytest configuration
+│   ├── test_api.py           # API endpoint tests
+│   ├── test_models.py        # Database model tests
+│   ├── test_ocr.py           # OCR processing tests
+│   └── test_services.py      # Service layer tests
 └── migrations/
-    └── init_db.py        # Database initialization
+    └── init_db.py            # Database initialization
 ```
 
 ### Frontend Components
@@ -183,7 +196,9 @@ templates/
 ├── index.html           # Homepage with features showcase
 ├── upload.html          # Single file upload interface
 ├── batch.html           # Batch processing interface
-└── receipts.html        # Receipt management interface
+├── receipts.html        # Receipt management interface
+├── receipt_detail.html  # Individual receipt details
+└── statistics.html      # Application statistics
 ```
 
 ### Database Schema
@@ -191,6 +206,18 @@ templates/
 - **receipts**: File metadata and processing status
 - **extracted_data**: OCR results and structured data
 - **batch_jobs**: Batch processing job tracking
+
+### API Blueprint Architecture
+
+The API is organized using Flask blueprints for better maintainability:
+
+- **📤 Upload Routes** (`upload_routes.py`): File upload and processing endpoints
+- **📄 Receipt Routes** (`receipt_routes.py`): Receipt management and retrieval
+- **📦 Batch Routes** (`batch_routes.py`): Batch job management and status
+- **⚙️ System Routes** (`system_routes.py`): Health checks and statistics
+- **🔧 Utils** (`utils.py`): Shared utilities and helper functions
+
+Each blueprint is registered under the `/api/v1` prefix and handles specific resource domains, making the codebase more modular and easier to maintain.
 
 ## 🔧 Configuration
 
@@ -229,20 +256,31 @@ cv2.fastNlMeansDenoising(image, None, 10, 7, 21)
 
 ## 🧪 Testing
 
-### Run Unit Tests
+### Run Tests
+
 ```bash
+# Run all tests
 pytest tests/ -v
+
+# Run specific test files
+pytest tests/test_api.py -v
+pytest tests/test_models.py -v
+pytest tests/test_ocr.py -v
+
+# Run with coverage report
+pytest --cov=. --cov-report=html --cov-report=term
+
+# Run tests in parallel (faster)
+pytest -n auto
 ```
 
-### Run Integration Tests
-```bash
-pytest tests/integration/ -v
-```
+### Test Organization
 
-### Test Coverage
-```bash
-pytest --cov=. --cov-report=html
-```
+- **`test_api.py`**: API endpoint testing
+- **`test_models.py`**: Database model testing
+- **`test_ocr.py`**: OCR processing testing
+- **`test_services.py`**: Service layer testing
+- **`conftest.py`**: Shared pytest fixtures and configuration
 
 ## 📊 Performance Optimization
 
@@ -282,51 +320,33 @@ pytest --cov=. --cov-report=html
 
 ### Production Deployment with Docker
 
-1. **Create Dockerfile**
-   ```dockerfile
-   FROM python:3.9-slim
+The project includes production-ready Docker configuration:
 
-   # Install system dependencies
-   RUN apt-get update && apt-get install -y \
-       tesseract-ocr \
-       poppler-utils \
-       libpq-dev \
-       && rm -rf /var/lib/apt/lists/*
+1. **Using Docker Compose**
+   ```bash
+   # Start all services
+   docker-compose up -d
 
-   WORKDIR /app
-   COPY requirements.txt .
-   RUN pip install -r requirements.txt
+   # View logs
+   docker-compose logs -f
 
-   COPY . .
-
-   EXPOSE 5000
-   CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:create_app()"]
+   # Stop services
+   docker-compose down
    ```
 
-2. **Docker Compose Setup**
+2. **Services Configuration**
+   - **Web Application**: Flask app with Gunicorn server on port 5000
+   - **Database**: PostgreSQL 13 with persistent data storage
+   - **Reverse Proxy**: Nginx for static files and SSL termination
+   - **Health Checks**: Built-in health monitoring for all services
+
+3. **Environment Variables**
+   Update the docker-compose.yml with your production settings:
    ```yaml
-   version: '3.8'
-   services:
-     web:
-       build: .
-       ports:
-         - "5000:5000"
-       environment:
-         - DATABASE_URL=postgresql://user:pass@db:5432/receiptvision
-       depends_on:
-         - db
-
-     db:
-       image: postgres:13
-       environment:
-         - POSTGRES_DB=receiptvision
-         - POSTGRES_USER=user
-         - POSTGRES_PASSWORD=pass
-       volumes:
-         - postgres_data:/var/lib/postgresql/data
-
-   volumes:
-     postgres_data:
+   environment:
+     - DATABASE_URL=postgresql://your_user:your_pass@db:5432/receiptvision
+     - SECRET_KEY=your-production-secret-key
+     - FLASK_ENV=production
    ```
 
 ### Cloud Deployment Options
@@ -348,43 +368,97 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 4. Run the test suite: `pytest`
 5. Submit a pull request
 
-### Code Style
+### Code Style & Development Guidelines
+
+The project includes comprehensive development guidelines in `.cursor/rules` for:
+
+- **Architecture Patterns**: Flask application factory, blueprint organization, service layer
+- **Code Standards**: PEP 8 compliance, type hints, Google-style docstrings
+- **API Development**: RESTful conventions, error handling, response formats
+- **Database Patterns**: SQLAlchemy best practices, relationship management
+- **Testing Guidelines**: pytest patterns, fixture usage, coverage requirements
+- **Security Considerations**: Input validation, file upload security, SQL injection prevention
+
+### Key Conventions
 
 - Follow PEP 8 for Python code
+- Use type hints for all function parameters and return values
+- Add Google-style docstrings to all functions and classes
+- Organize routes by resource using blueprints
+- Implement business logic in service layer, not route handlers
+- Write comprehensive tests for new features
 - Use meaningful variable and function names
-- Add docstrings to all functions and classes
-- Write unit tests for new features
+- Implement proper error handling and logging
 
 ## 📝 API Documentation
 
-### Upload Single File
+### Core Endpoints
+
+#### Upload & Processing
 ```http
+# Upload single file
 POST /api/v1/upload
 Content-Type: multipart/form-data
-
 file: [binary file data]
-```
 
-### Batch Upload
-```http
+# Batch upload multiple files
 POST /api/v1/batch-upload
 Content-Type: multipart/form-data
-
 files: [multiple binary files]
 job_name: "Optional job name"
 ```
 
-### Get Receipt Data
+#### Receipt Management
 ```http
+# Get specific receipt
 GET /api/v1/receipt/{receipt_id}
-```
 
-### List Receipts
-```http
+# List all receipts with pagination
 GET /api/v1/receipts?page=1&per_page=10&status=completed
+
+# Get detailed receipt information
+GET /api/v1/receipts/{receipt_id}
+
+# Download original receipt file
+GET /api/v1/receipts/{receipt_id}/file
 ```
 
-For complete API documentation, visit `/api/docs` when running the application.
+#### Batch Job Management
+```http
+# Get batch job status
+GET /api/v1/batch-job/{job_id}
+
+# List all batch jobs
+GET /api/v1/batch-jobs?page=1&per_page=10
+```
+
+#### System Information
+```http
+# Health check
+GET /api/v1/health
+
+# Application statistics
+GET /api/v1/statistics
+```
+
+### Response Format
+All API responses follow a consistent JSON structure:
+
+```json
+{
+  "success": true,
+  "data": {...},
+  "message": "Operation completed successfully"
+}
+```
+
+Error responses:
+```json
+{
+  "error": "Description of the error",
+  "code": "ERROR_CODE"
+}
+```
 
 ## 🐛 Troubleshooting
 
