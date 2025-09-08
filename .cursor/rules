@@ -1,0 +1,285 @@
+# ReceiptVision Project Rules
+# Advanced OCR Application for Bank Invoices and Consumer Receipts
+
+## Project Overview
+This is a Flask-based OCR application that processes receipts and invoices using advanced image processing and machine learning. The application features a modern Apple-inspired UI and robust backend architecture with PostgreSQL database, batch processing capabilities, and comprehensive API endpoints.
+
+## Architecture & Structure
+
+### Backend Architecture
+- **Flask Application Factory Pattern**: Main app in `app.py` using factory pattern
+- **Blueprint-based Routing**: API routes organized in `api/blueprints/` by resource
+- **Service Layer**: Business logic in `services/` (FileProcessor, BatchProcessor)
+- **OCR Engine**: Core processing in `ocr/` (OCREngine, ImageProcessor, PDFProcessor)
+- **SQLAlchemy Models**: Database models in `models.py` with proper relationships
+
+### Directory Structure
+```
+ReceiptVision/
+├── app.py                 # Flask application factory
+├── models.py              # SQLAlchemy database models
+├── api/
+│   ├── routes.py         # Main API blueprint registration
+│   └── blueprints/       # Resource-specific route blueprints
+│       ├── upload_routes.py    # File upload endpoints
+│       ├── receipt_routes.py   # Receipt management
+│       ├── batch_routes.py     # Batch processing
+│       ├── system_routes.py    # Health/statistics
+│       └── utils.py           # Shared utilities
+├── web/
+│   └── routes.py         # Frontend template routes
+├── services/
+│   ├── file_processor.py # File processing service
+│   └── batch_processor.py# Batch processing service
+├── ocr/
+│   ├── ocr_engine.py     # Main OCR processing
+│   ├── image_processor.py# Image preprocessing
+│   └── pdf_processor.py  # PDF handling
+├── templates/            # Jinja2 templates
+├── static/              # CSS/JS/images
+├── tests/               # Pytest test suite
+└── migrations/          # Database migrations
+```
+
+## Coding Standards & Conventions
+
+### Python Code Style
+- **PEP 8 Compliance**: Follow Python PEP 8 style guide
+- **Type Hints**: Use type hints for function parameters and return values
+- **Docstrings**: Use Google-style docstrings for all functions and classes
+- **Import Order**: stdlib, third-party, local imports with proper spacing
+- **Line Length**: Max 120 characters per line
+- **Naming**: snake_case for functions/variables, PascalCase for classes
+
+### File Organization
+- **Blueprint Separation**: Each resource gets its own blueprint file in `api/blueprints/`
+- **Service Pattern**: Business logic goes in `services/` not in route handlers
+- **Model Organization**: All database models in single `models.py` with proper relationships
+- **Utility Functions**: Shared helpers in appropriate `utils.py` files
+
+### Database Patterns
+- **SQLAlchemy Models**: Use Column() explicitly, proper foreign keys and relationships
+- **Timestamps**: Use `datetime.utcnow` for default timestamps
+- **Serialization**: Implement `to_dict()` methods for JSON serialization
+- **Relationships**: Use proper `backref` and `cascade` settings
+
+## API Development Guidelines
+
+### REST API Conventions
+- **URL Structure**: `/api/v1/{resource}` pattern
+- **HTTP Methods**: GET (read), POST (create), PUT (update), DELETE (remove)
+- **Status Codes**: 200 (success), 400 (bad request), 404 (not found), 500 (server error)
+- **Response Format**: Always return JSON with consistent structure
+- **Error Handling**: Include error messages and appropriate HTTP status codes
+
+### Route Organization
+- **Resource-based**: Group routes by resource (uploads, receipts, batches, system)
+- **Blueprint Registration**: Register blueprints in main `api/routes.py`
+- **URL Prefixes**: Use `/api/v1` prefix for all API endpoints
+- **Parameter Validation**: Validate request parameters and return meaningful errors
+
+### Request/Response Patterns
+```python
+# Successful response
+{
+    "success": true,
+    "data": {...},
+    "message": "Operation completed"
+}
+
+# Error response
+{
+    "error": "Description of error",
+    "code": "ERROR_CODE",
+    "details": {...}
+}
+
+# Paginated response
+{
+    "items": [...],
+    "total": 100,
+    "page": 1,
+    "per_page": 10,
+    "has_next": true,
+    "has_prev": false
+}
+```
+
+## OCR & Image Processing Guidelines
+
+### Image Processing Pipeline
+- **Preprocessing**: Always apply image preprocessing before OCR
+- **Multiple Algorithms**: Use multiple denoising and enhancement techniques
+- **Confidence Scoring**: Calculate confidence scores for all extracted fields
+- **Error Handling**: Graceful fallback for processing failures
+
+### Data Extraction Patterns
+- **Structured Data**: Extract merchant info, financial data, items, dates
+- **Confidence Metrics**: Provide field-level and overall confidence scores
+- **Currency Detection**: Auto-detect currency from text patterns
+- **Date Parsing**: Use fuzzy date parsing with fallback patterns
+
+### File Type Support
+- **Images**: PNG, JPG, JPEG, BMP, TIFF, TIF
+- **Documents**: PDF (with page extraction)
+- **Validation**: Always validate file types and integrity
+- **Cleanup**: Clean up temporary files after processing
+
+## Frontend Development Guidelines
+
+### Template Structure
+- **Base Template**: Use `base.html` for common layout and navigation
+- **Block System**: Proper use of Jinja2 blocks for extensibility
+- **Asset Loading**: Static files served through Flask's static system
+- **Navigation**: Consistent navigation across all pages
+
+### JavaScript Patterns
+- **Class-based**: Use ES6 classes for organizing functionality
+- **Event Handling**: Proper event delegation and cleanup
+- **API Integration**: Consistent patterns for API calls
+- **Error Handling**: User-friendly error messages and loading states
+
+### CSS Architecture
+- **Apple-inspired Design**: Modern, clean UI following Apple design principles
+- **Responsive Design**: Mobile-first approach with proper breakpoints
+- **CSS Variables**: Use custom properties for theming
+- **Component-based**: Modular CSS for reusable components
+
+## Testing Guidelines
+
+### Test Organization
+- **pytest Framework**: Use pytest for all testing
+- **Fixtures**: Proper use of fixtures in `conftest.py`
+- **Test Isolation**: Each test should be independent
+- **Test Data**: Use temporary databases and cleanup after tests
+
+### Test Patterns
+```python
+def test_api_endpoint(client):
+    """Test description following naming convention."""
+    response = client.get('/api/v1/endpoint')
+    assert response.status_code == 200
+
+    data = json.loads(response.data)
+    assert 'expected_field' in data
+```
+
+### Coverage Areas
+- **API Endpoints**: Test all API routes and methods
+- **Models**: Test model methods and relationships
+- **Services**: Test business logic in service classes
+- **OCR Processing**: Test OCR and image processing functions
+
+## Configuration & Environment
+
+### Environment Variables
+- **Database**: Use DATABASE_URL for PostgreSQL connection
+- **Secrets**: Store sensitive data in environment variables
+- **File Uploads**: Configure UPLOAD_FOLDER and MAX_CONTENT_LENGTH
+- **OCR Settings**: TESSERACT_CMD and TESSDATA_PREFIX paths
+
+### Development Setup
+- **Virtual Environment**: Always use virtual environments
+- **Requirements**: Keep `requirements.txt` updated with pinned versions
+- **Database Migrations**: Use Flask-Migrate for schema changes
+- **Local Development**: SQLite fallback for development
+
+## Error Handling & Logging
+
+### Logging Patterns
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+logger.info(f"Processing file: {filename}")
+logger.error(f"Error processing file {filename}: {str(e)}")
+```
+
+### Exception Handling
+- **Try-catch Blocks**: Wrap risky operations in try-catch
+- **Specific Exceptions**: Catch specific exception types when possible
+- **User-friendly Messages**: Return helpful error messages to users
+- **Logging**: Always log exceptions with context
+
+## Security Considerations
+
+### File Upload Security
+- **File Validation**: Validate file types and sizes
+- **Secure Filenames**: Use `secure_filename()` for uploaded files
+- **Temporary Files**: Clean up temporary files after processing
+- **Path Traversal**: Prevent directory traversal attacks
+
+### Database Security
+- **SQL Injection**: Use SQLAlchemy ORM to prevent SQL injection
+- **Input Validation**: Validate all user inputs
+- **Secrets Management**: Use environment variables for sensitive data
+
+## Performance Guidelines
+
+### Database Optimization
+- **Lazy Loading**: Use appropriate SQLAlchemy lazy loading
+- **Pagination**: Implement pagination for large datasets
+- **Indexing**: Add database indexes for frequently queried fields
+- **Query Optimization**: Use efficient queries and avoid N+1 problems
+
+### File Processing
+- **Async Processing**: Use background processing for heavy OCR tasks
+- **Batch Processing**: Support bulk file processing
+- **Memory Management**: Clean up large objects and temporary files
+- **Caching**: Cache processed results when appropriate
+
+## Deployment & Production
+
+### Docker Configuration
+- **Multi-stage Builds**: Optimize Docker images for production
+- **Health Checks**: Implement proper health check endpoints
+- **Environment Separation**: Separate configs for dev/staging/prod
+- **Volume Mounting**: Proper volume management for uploads and data
+
+### Production Considerations
+- **WSGI Server**: Use Gunicorn for production deployment
+- **Reverse Proxy**: Nginx configuration for static files and SSL
+- **Database**: PostgreSQL for production with proper backup strategy
+- **Monitoring**: Implement logging and monitoring for production
+
+## Code Quality & Maintenance
+
+### Code Review Guidelines
+- **Functionality**: Does the code work as intended?
+- **Performance**: Are there any performance bottlenecks?
+- **Security**: Are there any security vulnerabilities?
+- **Maintainability**: Is the code readable and well-documented?
+- **Testing**: Are there adequate tests for the changes?
+
+### Documentation Requirements
+- **README**: Keep README.md updated with setup and usage instructions
+- **API Documentation**: Document all API endpoints and parameters
+- **Code Comments**: Explain complex logic and business rules
+- **Architecture Decisions**: Document important architectural choices
+
+## Feature Development Workflow
+
+### Adding New Features
+1. **Design**: Plan the feature architecture and database changes
+2. **Models**: Update database models if needed
+3. **Services**: Implement business logic in service layer
+4. **API**: Create or update API endpoints in appropriate blueprints
+5. **Frontend**: Add or update templates and JavaScript
+6. **Tests**: Write comprehensive tests for new functionality
+7. **Documentation**: Update relevant documentation
+
+### Modifying Existing Features
+1. **Impact Analysis**: Understand what will be affected
+2. **Backward Compatibility**: Ensure API compatibility when possible
+3. **Database Migrations**: Create migrations for schema changes
+4. **Testing**: Update existing tests and add new ones
+5. **Error Handling**: Update error handling and validation
+
+When implementing new features, always:
+- Follow the established patterns and conventions
+- Write tests before or alongside implementation
+- Consider performance and security implications
+- Update documentation and comments
+- Use proper error handling and logging
+- Follow the service layer pattern for business logic
